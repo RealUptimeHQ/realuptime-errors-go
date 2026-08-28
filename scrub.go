@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// PII scrub-by-default, client-side (docs/errors-plan.md, "PII
+// PII scrub-by-default, client-side (the internal-docs repo's errors-plan.md, "PII
 // scrub-by-default, specified"). A port of packages/errors-js/scrub.ts;
 // the shared vectors (scrub-vectors.json, vendored into this module and
 // asserted byte-identical to packages/errors-js/scrub-vectors.json by
@@ -29,9 +29,60 @@ const scrubbed = scrubbedPlaceholder
 
 var (
 	jwtRE         = regexp.MustCompile(`\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\b`)
-	prefixedKeyRE = regexp.MustCompile(`\b(?:sk|pk|rk|ghp|gho|ghs|xox[a-z]|rua|rue|ru_live)_[A-Za-z0-9_-]{8,}`)
+	prefixedKeyRE = regexp.MustCompile(`\b(?:sk|pk|rk|ghp|gho|ghs|xox[a-z]|rua|rue|ru_live|whsec)_[A-Za-z0-9_-]{8,}`)
+	awsKeyRE      = regexp.MustCompile(`\b(?:AKIA|ASIA)[0-9A-Z]{16}\b`)
 	hexRE         = regexp.MustCompile(`\b[0-9a-fA-F]{32,}\b`)
+	urlCredsRE    = regexp.MustCompile(`\b([a-zA-Z][a-zA-Z0-9+.-]*)://[^\s/@]+:[^\s/@]+@`)
+	camelBoundary = regexp.MustCompile(`([a-z0-9])([A-Z])`)
+	keySeparator  = regexp.MustCompile(`[^a-zA-Z0-9]+`)
 )
+
+// keyDenylist (REA-474): see packages/errors-js/scrub.ts's module doc for
+// the full rationale. Matched against whole camelCase/snake_case segments
+// (and contiguous joins of them) so "tokenizer" and "authentic" never match
+// "token" / "auth".
+var keyDenylist = map[string]bool{
+	"password":      true,
+	"passwd":        true,
+	"secret":        true,
+	"token":         true,
+	"apikey":        true,
+	"auth":          true,
+	"authorization": true,
+	"credential":    true,
+	"credentials":   true,
+	"privatekey":    true,
+	"accesskey":     true,
+	"session":       true,
+}
+
+func keySegments(key string) []string {
+	spaced := camelBoundary.ReplaceAllString(key, "${1}_${2}")
+	parts := keySeparator.Split(spaced, -1)
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p != "" {
+			out = append(out, strings.ToLower(p))
+		}
+	}
+	return out
+}
+
+// isKeyDenylisted is true when some contiguous run of a key's segments,
+// joined with no separator, equals a denylisted word exactly.
+func isKeyDenylisted(key string) bool {
+	segments := keySegments(key)
+	for i := range segments {
+		joined := ""
+		for j := i; j < len(segments); j++ {
+			joined += segments[j]
+			if keyDenylist[joined] {
+				return true
+			}
+		}
+	}
+	return false
+}
 
 var removedHeaders = map[string]bool{
 	"authorization":       true,
@@ -156,8 +207,10 @@ func scrubBase64ish(s string) string {
 // scrubString applies the five pattern rules to one string. Pure; exported
 // so vector tests can drive it directly.
 func scrubString(value string) string {
-	out := jwtRE.ReplaceAllString(value, scrubbed)
+	out := urlCredsRE.ReplaceAllString(value, "${1}://"+scrubbed+"@")
+	out = jwtRE.ReplaceAllString(out, scrubbed)
 	out = prefixedKeyRE.ReplaceAllString(out, scrubbed)
+	out = awsKeyRE.ReplaceAllString(out, scrubbed)
 	out = scrubCardNumbers(out)
 	out = hexRE.ReplaceAllString(out, scrubbed)
 	out = scrubBase64ish(out)
@@ -173,7 +226,11 @@ func scrubStringMap(m map[string]string) map[string]string {
 	}
 	out := make(map[string]string, len(m))
 	for k, v := range m {
-		out[k] = scrubString(v)
+		if isKeyDenylisted(k) {
+			out[k] = scrubbed
+		} else {
+			out[k] = scrubString(v)
+		}
 	}
 	return out
 }
@@ -262,7 +319,7 @@ func scrubRequest(r WireRequest, allowed map[string]bool) WireRequest {
 		headers := make(map[string]string, len(out.Headers))
 		for name, value := range out.Headers {
 			lower := strings.ToLower(name)
-			if removedHeaders[lower] && !allowed[lower] {
+			if (removedHeaders[lower] || isKeyDenylisted(lower)) && !allowed[lower] {
 				headers[name] = scrubbed
 			} else {
 				headers[name] = scrubString(value)

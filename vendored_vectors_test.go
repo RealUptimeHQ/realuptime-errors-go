@@ -10,7 +10,7 @@ import (
 // packages/errors-js/scrub-vectors.json, the canonical file. This is what
 // makes the mirror export in scripts/publish-sdk-mirrors.mjs safe to
 // re-copy blindly rather than trusting the module's own copy has not
-// drifted (docs/errors-plan.md, "The SDK matrix").
+// drifted (the internal-docs repo's errors-plan.md, "The SDK matrix").
 func TestVendoredVectorsMatchCanonical(t *testing.T) {
 	canonicalPath := filepath.Join("..", "errors-js", "scrub-vectors.json")
 	canonical, err := os.ReadFile(canonicalPath)

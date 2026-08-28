@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// Pins the wire contract mirror (docs/errors-plan.md, "The SDK matrix") and
+// Pins the wire contract mirror (the internal-docs repo's errors-plan.md, "The SDK matrix") and
 // the stdlib-only dependency discipline, the
 // packages/errors-ruby/test/wire_contract_test.rb convention ported to Go.
 

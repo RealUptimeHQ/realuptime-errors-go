@@ -1,5 +1,5 @@
 // Package realuptimeerrors is a zero-dependency (standard library only) Go
-// error tracking SDK for RealUptime Errors (docs/errors-plan.md, Linear
+// error tracking SDK for RealUptime Errors (the internal-docs repo's errors-plan.md, Linear
 // REA-255). One wire contract with the JS, Python and Ruby SDKs
 // (packages/errors-js/types.ts); the shared scrub vectors
 // (scrub-vectors.json, vendored into this module and asserted
