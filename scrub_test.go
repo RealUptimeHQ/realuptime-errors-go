@@ -3,12 +3,14 @@ package realuptimeerrors
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 )
 
 // Drives the SHARED scrub vectors (scrub-vectors.json, vendored from
-// packages/errors-js) through this SDK's scrubEvent, the
-// packages/errors-js/scrub.test.ts convention ported to Go. This test must
+// errors-js) through this SDK's scrubEvent, the
+// errors-js/scrub.test.ts convention ported to Go. This test must
 // never grow expectations of its own: a new vector in the shared file is
 // what every SDK's suite picks up automatically.
 //
@@ -126,5 +128,16 @@ func TestScrubEventDoesNotMutateInput(t *testing.T) {
 	}
 	if event.Request.Headers["cookie"] != "sid=1" {
 		t.Fatalf("input request headers were mutated: %v", event.Request.Headers)
+	}
+}
+
+// Error messages often carry user input. Go's RE2 is linear already; this
+// pins the pattern shared with the other SDKs to stay that way.
+func TestScrubStringHostileInputIsFast(t *testing.T) {
+	hostile := strings.Repeat("a.", 300) + "://" + strings.Repeat(":", 2000)
+	started := time.Now()
+	scrubString(hostile)
+	if elapsed := time.Since(started); elapsed > 250*time.Millisecond {
+		t.Fatalf("scrubString took %v on hostile input", elapsed)
 	}
 }

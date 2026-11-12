@@ -3,7 +3,7 @@
 Zero-dependency (standard library only) Go error tracking SDK: part of
 [RealUptime Errors](https://realuptime.io/error-tracking).
 
-This is a **mirror**. It is published from `packages/errors-go` in the
+This is a **mirror**. It is published from `errors-go` in the
 [realuptime monorepo](https://github.com/RealUptimeHQ/realuptime) by
 `scripts/publish-sdk-mirrors.mjs` and is not edited directly; open issues
 and PRs against this repo, but expect source changes to land here after

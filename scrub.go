@@ -6,9 +6,9 @@ import (
 )
 
 // PII scrub-by-default, client-side (the internal-docs repo's errors-plan.md, "PII
-// scrub-by-default, specified"). A port of packages/errors-js/scrub.ts;
+// scrub-by-default, specified"). A port of errors-js/scrub.ts;
 // the shared vectors (scrub-vectors.json, vendored into this module and
-// asserted byte-identical to packages/errors-js/scrub-vectors.json by
+// asserted byte-identical to errors-js/scrub-vectors.json by
 // wire_contract_test.go) pin every implementation -- JS, Python, Ruby, this
 // one, and the server's second net -- to identical output.
 //
@@ -32,12 +32,12 @@ var (
 	prefixedKeyRE = regexp.MustCompile(`\b(?:sk|pk|rk|ghp|gho|ghs|xox[a-z]|rua|rue|ru_live|whsec)_[A-Za-z0-9_-]{8,}`)
 	awsKeyRE      = regexp.MustCompile(`\b(?:AKIA|ASIA)[0-9A-Z]{16}\b`)
 	hexRE         = regexp.MustCompile(`\b[0-9a-fA-F]{32,}\b`)
-	urlCredsRE    = regexp.MustCompile(`\b([a-zA-Z][a-zA-Z0-9+.-]*)://[^\s/@]+:[^\s/@]+@`)
+	urlCredsRE    = regexp.MustCompile(`\b([a-zA-Z][a-zA-Z0-9+.-]{0,31})://[^\s/@:]+:[^\s/@]+@`)
 	camelBoundary = regexp.MustCompile(`([a-z0-9])([A-Z])`)
 	keySeparator  = regexp.MustCompile(`[^a-zA-Z0-9]+`)
 )
 
-// keyDenylist (REA-474): see packages/errors-js/scrub.ts's module doc for
+// keyDenylist (REA-474): see errors-js/scrub.ts's module doc for
 // the full rationale. Matched against whole camelCase/snake_case segments
 // (and contiguous joins of them) so "tokenizer" and "authentic" never match
 // "token" / "auth".

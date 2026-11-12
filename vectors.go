@@ -2,7 +2,7 @@ package realuptimeerrors
 
 import _ "embed"
 
-// vendoredScrubVectors is packages/errors-js/scrub-vectors.json, vendored
+// vendoredScrubVectors is errors-js/scrub-vectors.json, vendored
 // into this module (this SDK ships as a standalone public mirror, so a
 // parity claim depending on a sibling directory in the monorepo would be
 // untestable there). vendored_vectors_test.go pins it byte-for-byte against

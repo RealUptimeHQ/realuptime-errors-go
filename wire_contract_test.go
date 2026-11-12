@@ -15,7 +15,7 @@ import (
 
 // Pins the wire contract mirror (the internal-docs repo's errors-plan.md, "The SDK matrix") and
 // the stdlib-only dependency discipline, the
-// packages/errors-ruby/test/wire_contract_test.rb convention ported to Go.
+// errors-ruby/test/wire_contract_test.rb convention ported to Go.
 
 func TestStdlibOnly(t *testing.T) {
 	files, err := filepath.Glob("*.go")
@@ -192,6 +192,37 @@ func TestEventFieldNamesWithV2ScopeAreExactlyTheV2Set(t *testing.T) {
 	}
 	if event2.Device.Runtime != "go" {
 		t.Fatalf("device.runtime = %q, want go", event2.Device.Runtime)
+	}
+}
+
+// REA-569: level is per-event only (WithLevel), no sticky client-level
+// equivalent, so it never appears in TestEventFieldNamesWithV2ScopeAreExactlyTheV2Set
+// (which never passes WithLevel) -- it gets its own pair of tests instead.
+func TestLevelIsPerEventOnlyAndOmittedWhenUnset(t *testing.T) {
+	clock := newFakeClock()
+	var logs []string
+	c := testClient(newFakeServer().respondOK(), clock, &logs)
+
+	withLevel := c.buildEvent("m", nil, nil, []EventOption{WithLevel("fatal")})
+	gotWithLevel := eventKeys(t, withLevel)
+	wantWithLevel := append(append([]string(nil), v1Keys...), "level")
+	sort.Strings(wantWithLevel)
+	if !equalStrings(gotWithLevel, wantWithLevel) {
+		t.Fatalf("event keys = %v, want %v", gotWithLevel, wantWithLevel)
+	}
+	if withLevel.Level == nil || *withLevel.Level != "fatal" {
+		t.Fatalf("Level = %v, want \"fatal\"", withLevel.Level)
+	}
+
+	withoutLevel := c.buildEvent("m", nil, nil, nil)
+	if withoutLevel.Level != nil {
+		t.Fatalf("Level = %v, want nil (omitted)", *withoutLevel.Level)
+	}
+	got := eventKeys(t, withoutLevel)
+	want := append([]string(nil), v1Keys...)
+	sort.Strings(want)
+	if !equalStrings(got, want) {
+		t.Fatalf("event keys = %v, want exactly the v1 set", got)
 	}
 }
 

@@ -1,9 +1,9 @@
 // Package realuptimeerrors is a zero-dependency (standard library only) Go
 // error tracking SDK for RealUptime Errors (the internal-docs repo's errors-plan.md, Linear
 // REA-255). One wire contract with the JS, Python and Ruby SDKs
-// (packages/errors-js/types.ts); the shared scrub vectors
+// (errors-js/types.ts); the shared scrub vectors
 // (scrub-vectors.json, vendored into this module and asserted
-// byte-identical to packages/errors-js/scrub-vectors.json by
+// byte-identical to errors-js/scrub-vectors.json by
 // wire_contract_test.go) pin every implementation to identical scrubbing.
 //
 // Contract with the host program, non-negotiable: THIS SDK NEVER PANICS out
@@ -12,7 +12,7 @@
 // crashes the program it watches is worse than none.
 package realuptimeerrors
 
-// Wire limits, mirrored from packages/errors-js/types.ts and pinned by
+// Wire limits, mirrored from errors-js/types.ts and pinned by
 // wire_contract_test.go.
 const (
 	MaxEventsPerBatch        = 50
@@ -23,7 +23,7 @@ const (
 	MaxBreadcrumbDataEntries = 10
 	BufferMax                = 200
 
-	// v2 caps (REA-182), mirrored from packages/errors-js/types.ts.
+	// v2 caps (REA-182), mirrored from errors-js/types.ts.
 	MaxTagsPerEvent      = 20
 	MaxContextEntries    = 20
 	MaxContextKeyLength  = 64
@@ -32,17 +32,17 @@ const (
 )
 
 // SDKName and SDKVersion together form the wire batch's "sdk" string, e.g.
-// "realuptime-errors-go/0.1.0". SDKVersion is also read by
+// "realuptime-errors-go/<SDKVersion>". SDKVersion is also read by
 // scripts/publish-sdk-mirrors.mjs when building the public mirror.
 const (
 	SDKName    = "realuptime-errors-go"
-	SDKVersion = "0.1.0"
+	SDKVersion = "0.1.0" // x-release-please-version
 )
 
 const scrubbedPlaceholder = "[scrubbed]"
 
 // WireFrame is one stack frame, post-scrub. ContextLine/PreContext/
-// PostContext/Vars mirror packages/errors-js/types.ts's Phase 3 / v2
+// PostContext/Vars mirror errors-js/types.ts's Phase 3 / v2
 // additions; this SDK does not itself capture source context or local
 // variables (Go strips them from a compiled binary and there is no
 // portable stdlib-only way to read them), but the scrub function still
@@ -115,6 +115,10 @@ type WireEvent struct {
 	Tags               map[string]string `json:"tags,omitempty"`
 	Context            map[string]string `json:"context,omitempty"`
 	Device             *WireDevice       `json:"device,omitempty"`
+	// Level is REA-569's severity (fatal/error/warning/info/debug),
+	// per-event only (no sticky client-level equivalent, see WithLevel).
+	// omitempty like the rest of v2: absent resolves to "error" server-side.
+	Level *string `json:"level,omitempty"`
 }
 
 // WireBatch is the ingest POST body.

@@ -7,7 +7,7 @@ import (
 )
 
 // Pins the vendored copy of scrub-vectors.json byte-for-byte against
-// packages/errors-js/scrub-vectors.json, the canonical file. This is what
+// errors-js/scrub-vectors.json, the canonical file. This is what
 // makes the mirror export in scripts/publish-sdk-mirrors.mjs safe to
 // re-copy blindly rather than trusting the module's own copy has not
 // drifted (the internal-docs repo's errors-plan.md, "The SDK matrix").
@@ -18,6 +18,6 @@ func TestVendoredVectorsMatchCanonical(t *testing.T) {
 		t.Skipf("cannot read %s from this checkout (expected when this module is exported standalone as the public mirror): %v", canonicalPath, err)
 	}
 	if string(canonical) != string(vendoredScrubVectors) {
-		t.Fatalf("packages/errors-go/scrub-vectors.json has drifted from %s; re-copy it byte for byte", canonicalPath)
+		t.Fatalf("errors-go/scrub-vectors.json has drifted from %s; re-copy it byte for byte", canonicalPath)
 	}
 }

@@ -3,18 +3,45 @@ package realuptimeerrors
 import (
 	"fmt"
 	"log"
+	"net/url"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
 )
 
+// ingestPathRE is the ingest route's path shape:
+// /api/errors/v1/ingest/<key>, an optional trailing slash, nothing else.
+// Mirrors errors-js/index.ts's INGEST_PATH_RE.
+var ingestPathRE = regexp.MustCompile(`^/api/errors/v1/ingest/[^/?#]+/?$`)
+
+// isIngestURL reports whether dsn is the full ingest URL the server hands
+// out at project creation, not the bare rue_... key alone (REA-575). Before
+// this check, NewClient accepted any non-empty string and handed it
+// straight to the transport as the fetch endpoint: a bare key is not a
+// fetchable URL, so every send failed silently inside the transport's own
+// never-panic handling, forever, with no signal anywhere.
+func isIngestURL(dsn string) bool {
+	parsed, err := url.Parse(dsn)
+	if err != nil {
+		return false
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return false
+	}
+	if parsed.Host == "" {
+		return false
+	}
+	return ingestPathRE.MatchString(parsed.Path)
+}
+
 // Config configures a Client. Only DSN is required; everything else has an
 // honest default. Never causes NewClient to panic.
 type Config struct {
 	// DSN is the project's ingest URL, e.g.
-	// "https://realuptime.io/api/errors/v1/ingest/rue_...". A missing or
+	// "https://ingest.realuptime.io/api/errors/v1/ingest/rue_...". A missing or
 	// empty DSN produces an inert Client: every public method becomes a
 	// no-op rather than an error, because a customer's error tracker must
 	// never be the reason their own program cannot start.
@@ -92,6 +119,10 @@ func NewClient(cfg Config) *Client {
 		safeLog(logFn, "init called without a DSN; error reporting is disabled.")
 		return &Client{logFn: logFn, now: nowFn}
 	}
+	if !isIngestURL(cfg.DSN) {
+		safeLog(logFn, "DSN must be the full ingest URL, got a bare key (or a malformed URL); expected https://<host>/api/errors/v1/ingest/<key>. Error reporting is disabled.")
+		return &Client{logFn: logFn, now: nowFn}
+	}
 	c := &Client{
 		dsn:         cfg.DSN,
 		release:     cfg.Release,
@@ -128,6 +159,13 @@ func (c *Client) log(message string) { safeLog(c.logFn, message) }
 // simply do nothing.
 func (c *Client) initialized() bool { return c != nil && c.transport != nil }
 
+// IsEnabled reports whether error reporting is actually on: NewClient was
+// given a DSN that passed isIngestURL. A host process should log this once
+// at startup rather than assume that wiring NewClient into the code means
+// events are flowing -- REA-575 was exactly that assumption, wrong for
+// months because nothing checked it.
+func (c *Client) IsEnabled() bool { return c.initialized() }
+
 // EventOption customizes one captured event, layered OVER the client's
 // sticky scope (SetUser/SetTag/SetContext).
 type EventOption func(*eventOptions)
@@ -140,6 +178,7 @@ type eventOptions struct {
 	user        *WireUser
 	tags        map[string]string
 	context     map[string]string
+	level       *string
 }
 
 // WithRequest attaches minimal request context to one event.
@@ -176,6 +215,18 @@ func WithTags(tags map[string]string) EventOption {
 // WithContext attaches custom context to one event, merged over sticky context.
 func WithContext(context map[string]string) EventOption {
 	return func(o *eventOptions) { o.context = context }
+}
+
+// WithLevel sets the severity (REA-569) for one event: "fatal", "error",
+// "warning", "info", or "debug", Sentry's own five-value convention. There
+// is no sticky client-level equivalent (no Config.Level, no SetLevel) --
+// severity is a fact about THIS occurrence, not about the process, the same
+// reasoning WithEnvironment's per-event override gets layered on top of a
+// sticky default while this field has no default to layer onto at all. An
+// unset level omits the field entirely (omitempty); the server resolves an
+// absent value to "error".
+func WithLevel(level string) EventOption {
+	return func(o *eventOptions) { o.level = &level }
 }
 
 // CaptureException reports err. Never panics. The stack is captured at the
@@ -428,6 +479,7 @@ func (c *Client) buildEvent(message string, exceptionType *string, frames []Wire
 		Breadcrumbs:        emptyToNilBreadcrumbs(breadcrumbs),
 		BreadcrumbsDropped: breadcrumbsDropped,
 		Device:             c.device,
+		Level:              options.level,
 	}
 
 	mergedUser := scopeUser

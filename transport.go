@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// Backoff and timeout constants, mirrored from packages/errors-js/client.ts
+// Backoff and timeout constants, mirrored from errors-js/client.ts
 // and pinned by wire_contract_test.go.
 const (
 	sendTimeout  = 10 * time.Second
@@ -34,7 +34,7 @@ type transportOptions struct {
 }
 
 // transport is batched, buffered, backed-off delivery. Mirrors
-// packages/errors-js/client.ts and the Ruby SDK's Transport: over-quota
+// errors-js/client.ts and the Ruby SDK's Transport: over-quota
 // pauses until the reset instant, a revoked key disables delivery for the
 // process lifetime, transient failures back off exponentially (5s doubling
 // to 300s), and client-side drops ride the next successful batch as

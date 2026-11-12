@@ -10,7 +10,7 @@ import (
 
 // Shared test seams: a fake clock and a recording/queueable fake HTTP
 // transport, so no test touches the network or sleeps for real (the
-// packages/errors-ruby/test/test_helper.rb convention ported to Go).
+// errors-ruby/test/test_helper.rb convention ported to Go).
 
 type fakeClock struct {
 	mu  sync.Mutex
