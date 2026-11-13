@@ -54,6 +54,33 @@ var keyDenylist = map[string]bool{
 	"privatekey":    true,
 	"accesskey":     true,
 	"session":       true,
+	// REA-1260: names that carry credentials in query strings and form text.
+	"pw":         true,
+	"pwd":        true,
+	"passphrase": true,
+	"sig":        true,
+	"signature":  true,
+	"sid":        true,
+	"otp":        true,
+}
+
+// jsSpaceClass is JavaScript's \s, which RE2's ASCII \s is not.
+const jsSpaceClass = `\t\n\v\f\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}`
+
+// keyValueRE (REA-1260): name=value pairs in free text, paths and query
+// strings; the value is scrubbed when the name hits keyDenylist. No spaces
+// around "=", the name is bounded and the value class excludes every
+// delimiter, so it is linear and "[scrubbed]" survives a second pass.
+var keyValueRE = regexp.MustCompile(`([A-Za-z0-9_.\[\]-]{1,64})=([^&#;,"'<>` + jsSpaceClass + `]+)`)
+
+func scrubKeyValues(s string) string {
+	return keyValueRE.ReplaceAllStringFunc(s, func(pair string) string {
+		key := keyValueRE.FindStringSubmatch(pair)[1]
+		if isKeyDenylisted(key) {
+			return key + "=" + scrubbed
+		}
+		return pair
+	})
 }
 
 func keySegments(key string) []string {
@@ -214,7 +241,7 @@ func scrubString(value string) string {
 	out = scrubCardNumbers(out)
 	out = hexRE.ReplaceAllString(out, scrubbed)
 	out = scrubBase64ish(out)
-	return out
+	return scrubKeyValues(out)
 }
 
 // scrubStringMap scrubs VALUES of a flat string map (tags, custom context,
