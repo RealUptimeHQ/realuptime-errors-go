@@ -36,7 +36,7 @@ const (
 // scripts/publish-sdk-mirrors.mjs when building the public mirror.
 const (
 	SDKName    = "realuptime-errors-go"
-	SDKVersion = "0.1.0" // x-release-please-version
+	SDKVersion = "0.1.1" // x-release-please-version
 )
 
 const scrubbedPlaceholder = "[scrubbed]"

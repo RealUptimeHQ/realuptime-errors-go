@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1 (2026-11-13)
+
+
+### Bug Fixes
+
+* **errors:** scrub credential values in name=value text and query strings (REA-1260)
+
 ## 0.1.0 (2026-11-12)
 
 First tagged release. The module was usable from the repository before it carried a version tag.

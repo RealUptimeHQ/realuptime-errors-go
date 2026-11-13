@@ -88,7 +88,7 @@ go test ./...
 
 ## Version
 
-This mirror tracks SDKVersion `0.1.0` in `wire.go`, the string every
+This mirror tracks SDKVersion `0.1.1` in `wire.go`, the string every
 event actually carries on the wire.
 
 ## License
